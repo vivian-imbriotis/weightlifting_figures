@@ -6,6 +6,7 @@ from rpy2 import robjects
 
 sns.set_style("darkgrid")
 
+#These are the coefficients in the Wilk's Score polynomial
 wilks_values_men = np.array((-216.0475144,16.2606339,
                              -0.002388645,-0.00113732,
                              7.01863E-06,-1.291e-08))
@@ -19,6 +20,15 @@ lifting_goals = dict(zip(("squat","bench","deadlift","press","row"),
 
 class LinearRegression():
     def __init__(self):
+        '''
+        An object for performing Linear Regression using the
+        R lm(...) interface.
+
+        Returns
+        -------
+        Linear Regression object.
+
+        '''
         self.model = None
     def fit(self,X,Y):
         robjects.globalenv["X"] = robjects.FloatVector(X)
@@ -38,6 +48,15 @@ class LinearRegression():
         return result.transpose()
 
 class LogarithmicRegression(LinearRegression):
+        '''
+        An object for performing Logarithmic Regression using the
+        R lm(...) interface.
+
+        Returns
+        -------
+        Logarithmic Regression object.
+
+        '''
     def __init__(self,asymptote=3):
         self.asymptote = asymptote
         super().__init__()
@@ -109,9 +128,44 @@ def wilks_coef(bodyweight, gender='male'):
 
 
 def wilks_score(weight, bodyweight, gender='male'):
+    '''
+    Compute a Wilk's score for a lift.
+
+    Parameters
+    ----------
+    weight : float
+        Amount of weight lifted (kg)
+    bodyweight : float
+        Lifter bodyweight (kg).
+    gender : str, optional
+        Which polynomial to use, 'female' or 'male'. The default is 'male' 
+        (because I am male).
+
+    Returns
+    -------
+    float
+        The wilks score.
+
+    '''
     return weight*wilks_coef(bodyweight,gender)
 
 def get_1rms_from_csv(path):
+    '''
+    Read in data from a formatted CSV and get a dataframe of approximate
+    one-repetition max lifts.
+
+    Parameters
+    ----------
+    path : str
+        path to csv.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        A pandas dataframe of one-repetition maxes, with colums ("squat",
+        "bench","deadlift","press","row").
+
+    '''
     df = pd.read_csv(path)
     squat = [calc_1rm(weight, reps) for weight, reps in zip(df["Squat Weight"],df["s Reps"])]
     bench = [calc_1rm(weight, reps) for weight, reps in zip(df["Bench Weight"],df["b Reps"])]
@@ -123,11 +177,43 @@ def get_1rms_from_csv(path):
     return df
 
 def get_weight_from_excel(path):
+    '''
+    Read in data from TDEE 3.0 excel datasheet and get bodyweight
+    per day
+
+    Parameters
+    ----------
+    path : str
+        path to excel file.
+
+    Returns
+    -------
+    np.array
+        bodyweight indexed by dat.
+
+    '''
     df = pd.read_excel(path)
     return df.iloc[range(10,16*2,2),3:10].values.flatten()
 
 
 def create_1rm_figure(weight,one_rep_maxes):
+    '''
+    Create a figure showing one-repetition maxes and bodyweight
+    with OLS forecasting.
+
+    Parameters
+    ----------
+    weight : array
+        array read in via get_weight_from_excel.
+    one_rep_maxes : dataframe
+        dataframe read in via get_1rms_from_csv.
+
+    Returns
+    -------
+    fig : matplotlib.Figure
+        The created figure.
+
+    '''
     fig,ax = plt.subplots(nrows = 2, ncols = 3, tight_layout=True,
                           figsize = [12,8])
     for lift, axis in zip(one_rep_maxes.columns,ax.flatten()[:-1]):
@@ -165,6 +251,23 @@ def create_1rm_figure(weight,one_rep_maxes):
     return fig
 
 def create_wilks_figure(weight,one_rms):
+    '''
+    Create a figure showing wilk's score progress
+    with OLS forecasting.
+
+    Parameters
+    ----------
+    weight : array
+        array read in via get_weight_from_excel.
+    one_rep_maxes : dataframe
+        dataframe read in via get_1rms_from_csv.
+
+    Returns
+    -------
+    fig : matplotlib.Figure
+        The created figure.
+
+    '''
     wilks = np.full(17,np.nan)
     for week,_ in enumerate(wilks):
         w = weight[week*7:(week+1)*7].astype(float)
