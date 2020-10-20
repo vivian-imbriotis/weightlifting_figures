@@ -1,0 +1,1 @@
+# weightlifting_figures
